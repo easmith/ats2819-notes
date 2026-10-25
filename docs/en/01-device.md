@@ -80,7 +80,7 @@ the firmware is not booting.
 
 One property shapes everything built on top: the ROM's memory read copies **byte by byte**. Ordinary
 memory reads back correctly, but 32-bit peripheral registers return rubbish. That is why reading the
-flash-mapping registers needed a MIPS stub of our own — see `05-adfu.md`.
+flash-mapping registers needed a MIPS stub of our own — see [05-adfu.md](05-adfu.md).
 
 ## The tools here
 

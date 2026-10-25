@@ -13,7 +13,7 @@ that cost something.
    not match your unit.
 2. **Charge the headset.** ADFU does not charge. Hours in service mode flattened the battery here
    until the protection cut in and the device stopped responding entirely.
-3. **Read `06-flashing.md` and `07-recovery.md`.**
+3. **Read [06-flashing.md](docs/en/06-flashing.md) and [07-recovery.md](docs/en/07-recovery.md).**
    The recovery procedure is known and it works; knowing it beforehand is what turns a brick into
    an inconvenience.
 
@@ -41,4 +41,4 @@ that cost something.
 
 It enumerates as `10d6:10d6` with a red LED: that is the boot ROM in ADFU, and it means the ROM
 could not start the firmware — not that the device is dead. It is writable over ADFU, and
-`07-recovery.md` is the way back.
+[07-recovery.md](docs/en/07-recovery.md) is the way back.

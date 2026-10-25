@@ -53,7 +53,7 @@ sudo .venv/bin/python tools/adfu_flash.py stock         # dry run: talks to the 
 ```
 
 Flashing, and the acceptance read that tells you whether the chip can be read back the way the boot
-ROM reads it, are in `06-flashing.md`. Making your own prompts is in
+ROM reads it, are in [06-flashing.md](docs/en/06-flashing.md). Making your own prompts is in
 `08-custom-prompts.md`.
 
 ## Scope, and how much to trust this
@@ -77,7 +77,7 @@ ROM reads it, are in `06-flashing.md`. Making your own prompts is in
 * **No S22 firmware exists in public** other than the image in this repository. If you brick a unit
   and this image does not suit it, there is nothing else to fall back on.
 * The disk-upgrade path (`UPGRADE.HEX` on the device's own disk) is built and host-verified but
-  **never flashed**, and it is not the safe option — see `04-fwu-format.md`.
+  **never flashed**, and it is not the safe option — see [04-fwu-format.md](docs/en/04-fwu-format.md).
 
 ## Licence
 

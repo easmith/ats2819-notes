@@ -16,16 +16,33 @@ def test_en_and_ru_have_the_same_file_set():
            sorted(p.name for p in (ROOT / "docs/ru").glob("*.md"))
 
 
+def looks_like_a_path(target):
+    """Whether a markdown link target is meant to be a file in this repository.
+
+    notes/ keeps raw disassembly, and a line like `jalr [*(0x9fc21100)+0x18](10)` parses as a
+    markdown link with the target "10". A target with neither a slash nor a dot is not a path.
+    """
+    if target.startswith(("http://", "https://", "mailto:", "#")):
+        return False
+    return "/" in target or "." in target
+
+
 def test_every_relative_link_resolves():
     broken = []
     for path in markdown_files():
         for target in LINK.findall(path.read_text()):
-            if target.startswith(("http://", "https://", "mailto:", "#")):
+            if not looks_like_a_path(target):
                 continue
             resolved = (path.parent / target.split("#")[0]).resolve()
             if not resolved.exists():
                 broken.append(f"{path.relative_to(ROOT)} -> {target}")
     assert broken == []
+
+
+def test_disassembly_in_notes_is_not_mistaken_for_a_link():
+    assert not looks_like_a_path("10")
+    assert looks_like_a_path("01-device.md")
+    assert looks_like_a_path("../../notes")
 
 
 def test_readme_states_scope_and_license():
