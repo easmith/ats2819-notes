@@ -48,6 +48,18 @@ def _import_or_hint(name):
         raise BootstrapMissing(f"{name} is not installed — {BOOTSTRAP_HINT}") from exc
 
 
+NO_BACKEND = ("pyusb found no USB backend: libusb is not installed. On macOS: brew install libusb; "
+              "on Debian/Ubuntu: apt install libusb-1.0-0.")
+
+
+def _no_rights(exc):
+    return RuntimeError(
+        f"the device is there but the operating system will not hand it over: {exc}. USB access "
+        "needs root — rerun the same command with sudo. On macOS, unmount the disk first "
+        "(diskutil unmount /Volumes/AGP-S22) so the mass-storage driver lets go."
+    )
+
+
 def _usb():
     usb = _import_or_hint("usb")
     _import_or_hint("usb.core")
@@ -81,10 +93,7 @@ def find_storage():
     try:
         devices = list(usb.core.find(find_all=True, idVendor=P.VID))
     except usb.core.NoBackendError as exc:
-        raise RuntimeError(
-            "pyusb found no USB backend: libusb is not installed. On macOS: brew install libusb; "
-            "on Debian/Ubuntu: apt install libusb-1.0-0."
-        ) from exc
+        raise RuntimeError(NO_BACKEND) from exc
     for d in devices:
         if d.idProduct != P.PID_ROM:
             return d
@@ -102,7 +111,10 @@ def switch_to_download():
             s.detach_kernel_driver(0)
     except Exception:
         pass
-    usb.util.claim_interface(s, 0)
+    try:
+        usb.util.claim_interface(s, 0)
+    except usb.core.USBError as exc:
+        raise _no_rights(exc) from exc
     link = UsbLink.autodetect(s)
     rom = P.RomSession(link)
     ident, status = rom.inquiry()
@@ -123,10 +135,7 @@ def open_adfu():
     try:
         d = usb.core.find(idVendor=P.VID, idProduct=P.PID_ROM)
     except usb.core.NoBackendError as exc:
-        raise RuntimeError(
-            "pyusb found no USB backend: libusb is not installed. On macOS: brew install libusb; "
-            "on Debian/Ubuntu: apt install libusb-1.0-0."
-        ) from exc
+        raise RuntimeError(NO_BACKEND) from exc
     if d is None:
         d = switch_to_download()
     if d is None:
@@ -134,7 +143,10 @@ def open_adfu():
             "No device in ADFU download mode (10d6:10d6). Plug the headset in; if it mounts as a "
             "disk instead, this tool switches it over, but USB access needs root — rerun with sudo."
         )
-    d.set_configuration()
+    try:
+        d.set_configuration()
+    except usb.core.USBError as exc:
+        raise _no_rights(exc) from exc
     return d
 
 
