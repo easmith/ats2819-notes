@@ -33,6 +33,7 @@ import time
 sys.path.insert(0, os.path.dirname(__file__))
 from adfu_core import open_adfu, P, UsbLink  # noqa: E402
 import build_fw  # noqa: E402
+import loader_check  # noqa: E402
 from paths import (BUILD_ROOT, REPO_ROOT, VENDOR_ROOT, asset, image_or_shipped, out_dir, vendor)  # noqa: E402
 
 
@@ -160,7 +161,10 @@ def fix_brec_offset(fwsc):
     b = bytearray(fwsc)
     for va in BREC_OFF_SITES:
         o = va - LOADER_ADDR
-        assert b[o:o + 2] == b"\x00\xf4" and b[o + 3] in (0x48, 0x49), f"unexpected code at {va:#x}"
+        if not (b[o:o + 2] == b"\x00\xf4" and b[o + 3] in (0x48, 0x49)):
+            print(f"NOT patching {va:#x}: unexpected code there; BREC will be written at the SDK's "
+                  "0x400, which this device's MBREC does not look at", file=sys.stderr)
+            continue
         b[o:o + 2] = (0xF7C1).to_bytes(2, "little")
     return bytes(b)
 
@@ -186,7 +190,10 @@ def use_hw_seed(fwsc):
     """
     o = SEED_SEL_SITE - LOADER_ADDR
     b = bytearray(fwsc)
-    assert struct.unpack_from("<I", b, o)[0] == 0x34794000, f"unexpected code at {SEED_SEL_SITE:#x}"
+    if struct.unpack_from("<I", b, o)[0] != 0x34794000:
+        print(f"NOT patching {SEED_SEL_SITE:#x}: unexpected code there; the write would use a "
+              "software seed and the boot ROM would not be able to read the result", file=sys.stderr)
+        return bytes(b)
     struct.pack_into("<I", b, o, 0x34790000)          # ori t9,v1,0 -> CTL written back unchanged
     print(f"NorFwsc patched at {SEED_SEL_SITE:#x}: RAND_SEL not set, write uses the eFuse seed")
     return bytes(b)
@@ -195,6 +202,7 @@ def use_hw_seed(fwsc):
 def load_image(which):
     """Returns (hwsc, fwsc, brec, lfi, mbrec). FWSC header is patched except the NOR record."""
     hwsc = open(vendor("afi", "NorHwsc.bin"), "rb").read()
+    loader_check.warn(loader_check.check_norfwsc(open(vendor("afi", "NorFwsc.bin"), "rb").read()))
     if which == "ours":
         e = afi_entries(open(image_or_shipped("afi_plain.bin"), "rb").read())
         brec, lfi, mbrec, fwsc = e["NORBRECBIN"][1], e["FWIMAGEFW"][1], e["NORMBRECBIN"][1], e["NORFWSCBIN"][1]
@@ -646,6 +654,8 @@ def main():
     ap.add_argument("--masks", default="0", help="comma list of SPI0 CTL masks to try for --read, e.g. 0,0x2000")
     a = ap.parse_args()
     HW_SEED[0] = not a.sw_seed
+    if a.sw_seed:
+        loader_check.warn_sw_seed()
     if a.write and (a.read or a.xip or a.xip2 or a.regs):
         sys.exit("--read/--xip/--regs and --write are exclusive")
 
