@@ -1,0 +1,3 @@
+pyusb>=1.2
+capstone
+pyelftools
