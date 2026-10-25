@@ -1,0 +1,138 @@
+# Upstream: https://github.com/sonigeez/actions-adfu (MIT).
+# This patch makes the CLI auto-detect the device's bulk endpoints instead of hardcoding
+# 0x02/0x81, and retry the ROM inquiry — both needed on the ATS2819 used here.
+# It is worth offering upstream as a pull request; scripts/bootstrap.sh applies it locally.
+#
+diff --git a/src/actions_adfu/cli.py b/src/actions_adfu/cli.py
+index d7dd86b..648ef04 100644
+--- a/src/actions_adfu/cli.py
++++ b/src/actions_adfu/cli.py
+@@ -70,27 +70,44 @@ class DryLink(P.Link):
+ 
+ 
+ class UsbLink(P.Link):
+-    def __init__(self, dev):
+-        self.dev = dev
++    def __init__(self, dev, ep_out=P.EP_OUT, ep_in=P.EP_IN):
++        self.dev, self.ep_out, self.ep_in = dev, ep_out, ep_in
++
++    @classmethod
++    def autodetect(cls, dev):
++        """Use the bulk endpoints the device actually reports (storage mode may differ from 0x02/0x81)."""
++        import usb.util
++        intf = dev.get_active_configuration()[(0, 0)]
++        eps = [e for e in intf if usb.util.endpoint_type(e.bmAttributes) == usb.util.ENDPOINT_TYPE_BULK]
++        ep_out = next(e.bEndpointAddress for e in eps if usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_OUT)
++        ep_in = next(e.bEndpointAddress for e in eps if usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_IN)
++        print(f"Bulk endpoints: OUT 0x{ep_out:02x}, IN 0x{ep_in:02x}")
++        return cls(dev, ep_out, ep_in)
+ 
+     def write(self, data):
+-        self.dev.write(P.EP_OUT, data, timeout=5000)
++        self.dev.write(self.ep_out, data, timeout=5000)
+ 
+     def read(self, n, timeout_ms=5000):
+-        buf = bytes(self.dev.read(P.EP_IN, n, timeout=timeout_ms))
++        buf = bytes(self.dev.read(self.ep_in, n, timeout=timeout_ms))
+         if len(buf) != n:
+             raise IOError(f"short read: wanted {n}, got {len(buf)}")
+         return buf
+ 
+ 
+-def drain(d):
+-    """Discard any reply left queued by an earlier, interrupted exchange."""
++def drain(d, ep_in=None):
++    """Discard any reply left queued by an earlier, interrupted exchange.
++
++    Storage mode can report different endpoints than the boot ROM, and a stale reply longer than
++    the next expected read shows up as [Errno 84] Overflow, so take the endpoint from the caller
++    when it knows better and treat every USB error here as "nothing left to read".
++    """
+     import usb.core
+-    try:
+-        while True:
+-            print("drained stale reply:", bytes(d.read(P.EP_IN, 512, timeout=200)).hex())
+-    except usb.core.USBTimeoutError:
+-        pass
++    ep = P.EP_IN if ep_in is None else ep_in
++    for _ in range(32):
++        try:
++            print("drained stale reply:", bytes(d.read(ep, 512, timeout=200)).hex())
++        except usb.core.USBError:
++            return
+ 
+ 
+ def open_usb(pids=P.ADFU_PIDS):
+@@ -219,7 +236,7 @@ def cmd_probe(a):
+             print("Download-mode device never appeared.")
+             return
+         d.set_configuration()
+-        data, st = P.RomSession(UsbLink(d)).inquiry()
++        data, st = P.RomSession(UsbLink.autodetect(d)).inquiry()
+         print(f"ROM inquiry: {data!r}  CSW status {st}")
+         return
+     devs = open_usb(pids=range(0x10000))
+@@ -232,7 +249,7 @@ def cmd_probe(a):
+     if rom and a.inquiry:
+         d = rom[0]
+         d.set_configuration()
+-        data, st = P.RomSession(UsbLink(d)).inquiry()
++        data, st = P.RomSession(UsbLink.autodetect(d)).inquiry()
+         print(f"ROM inquiry: {data!r}  CSW status {st}")
+ 
+ 
+@@ -255,9 +272,25 @@ def cmd_switch(a):
+         usb.util.claim_interface(d, 0)
+     except usb.core.USBError as e:
+         sys.exit(f"Could not claim the USB interface ({e}). Run this command as root (sudo).")
+-    link = UsbLink(d)
++    link = UsbLink.autodetect(d)
+     rom = P.RomSession(link)            # same CBW/CSW framing as the firmware's MSC driver
+-    ident, st = rom.inquiry()
++    # An interrupted earlier exchange can leave a reply queued, and then the 11-byte identify read
++    # lands on stale data and fails with [Errno 84] Overflow. Drain, and retry the identify.
++    drain(d, link.ep_in)
++    ident, st, last = None, None, None
++    for attempt in range(5):
++        try:
++            ident, st = rom.inquiry()
++            last = None
++            break
++        except Exception as e:
++            last = e
++            print(f"  identify attempt {attempt + 1} failed ({e}); draining and retrying")
++            drain(d, link.ep_in)
++            time.sleep(0.3)
++    if last is not None:
++        sys.exit(f"Device never answered the identify command ({last}). "
++                 f"Unplug and replug it, then try again.")
+     print(f"Identify (0xCC): {ident!r}  CSW status {st}")
+     if ident != b"ACTIONSUSBD":
+         sys.exit("Device did not identify as an Actions ADFU-capable device. Stopping.")
+@@ -270,7 +303,7 @@ def cmd_switch(a):
+     if rd is None:
+         sys.exit("Download-mode device (10d6:10d6) did not appear.")
+     rd.set_configuration()
+-    data, st = P.RomSession(UsbLink(rd)).inquiry()
++    data, st = P.RomSession(UsbLink.autodetect(rd)).inquiry()
+     print(f"Boot ROM inquiry: {data!r}  CSW status {st}")
+     print("Device is in download mode. Nothing has been written.")
+ 
+@@ -283,7 +316,7 @@ def cmd_load(a):
+     d = devs[0]
+     d.set_configuration()
+     drain(d)
+-    run_script(fw, UsbLink(d), stop_before_flash=True)
++    run_script(fw, UsbLink.autodetect(d), stop_before_flash=True)
+ 
+ 
+ def cmd_flash(a):
+@@ -300,7 +333,7 @@ def cmd_flash(a):
+     d = devs[0]
+     d.set_configuration()
+     drain(d)
+-    run_script(fw, UsbLink(d), stop_before_flash=False)
++    run_script(fw, UsbLink.autodetect(d), stop_before_flash=False)
+ 
+ 
+ def main():

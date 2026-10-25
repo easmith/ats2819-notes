@@ -3,8 +3,8 @@ import importlib
 
 import pytest
 
-ALL_TOOLS = ("adfu_core", "adfu_flash", "adfu_stub", "build_fw", "cfgdump",
-             "extract_all", "fwu_pack", "make_tts", "norline", "verify_raw")
+ALL_TOOLS = ("adfu_core", "adfu_flash", "adfu_stub", "build_fw", "cfgdump", "extract_all",
+             "fwfat", "fwu_pack", "loader_check", "make_tts", "norline", "verify_raw")
 
 
 @pytest.mark.parametrize("mod", ALL_TOOLS)

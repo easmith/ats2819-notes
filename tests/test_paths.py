@@ -7,9 +7,17 @@ from paths import VENDOR_ROOT, BootstrapMissing, asset, image_or_shipped, vendor
 
 
 def test_vendor_missing_names_bootstrap():
+    """Whether or not bootstrap has run, a file it did not bring in must say to run it."""
     with pytest.raises(BootstrapMissing) as e:
-        vendor("2819p", "psp_rel", "bin", "upgrade.bin")
+        vendor("2819p", "no_such_file_in_the_sdk.bin")
     assert "scripts/bootstrap.sh" in str(e.value)
+
+
+def test_vendor_returns_a_bootstrapped_file_when_it_is_there():
+    loader = VENDOR_ROOT / "afi" / "NorFwsc.bin"
+    if not loader.is_file():
+        pytest.skip("run scripts/bootstrap.sh first")
+    assert vendor("afi", "NorFwsc.bin") == loader
 
 
 def test_asset_returns_existing_path():
