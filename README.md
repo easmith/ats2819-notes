@@ -30,7 +30,7 @@ sees noise, finds no boot record and drops into ADFU. One word fixes it:
 
 That is `use_hw_seed()` in `tools/adfu_flash.py`, applied by default. The whole story, including the
 offline decoder that "verified" the unbootable image and why it was wrong, is in
-[02-flash-format.md](docs/en/02-flash-format.md) and `09-journey.md`.
+[02-flash-format.md](docs/en/02-flash-format.md) and [09-journey.md](docs/en/09-journey.md).
 
 ## What is here
 
@@ -54,7 +54,7 @@ sudo .venv/bin/python tools/adfu_flash.py stock         # dry run: talks to the 
 
 Flashing, and the acceptance read that tells you whether the chip can be read back the way the boot
 ROM reads it, are in [06-flashing.md](docs/en/06-flashing.md). Making your own prompts is in
-`08-custom-prompts.md`.
+[08-custom-prompts.md](docs/en/08-custom-prompts.md).
 
 ## Scope, and how much to trust this
 

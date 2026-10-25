@@ -12,6 +12,8 @@ bone-conduction headset. [Русская версия](../ru/00-index.md).
 | [05-adfu.md](05-adfu.md) | ADFU: the protocol, the vendor loaders, which commands destroy boot records, and how to read flash without writing it |
 | [06-flashing.md](06-flashing.md) | Flashing: dry run, write, and the acceptance read that tells you whether the boot ROM can use the result |
 | [07-recovery.md](07-recovery.md) | Recovery: what a brick looks like, the two causes found here, the way back, and every rake already stepped on |
+| [08-custom-prompts.md](08-custom-prompts.md) | Voice prompts in your own language: all 31 prompts, building a library, the size limit, and the unreachable second language |
+| [09-journey.md](09-journey.md) | How it went, mistakes included: the brick, the two root causes, and seven lessons |
 
 Start at [SAFETY.md](../../SAFETY.md) if you intend to write to a device.
 

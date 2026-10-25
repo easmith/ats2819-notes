@@ -36,7 +36,7 @@ If any of these differ, treat every address in this repository as a hypothesis.
 The firmware carries **31 Chinese prompts and no English ones**. The language cannot be switched by
 buttons or by a setting: `tts_rc.lib` has slots for a second language and they are all empty. The
 only route to another language is replacing the prompt files themselves —
-`08-custom-prompts.md`.
+[08-custom-prompts.md](08-custom-prompts.md).
 
 The prompts are MP3, 16 kHz, 16 kbit/s, mono. All 31 factory clips matched the SDK's own files
 byte for byte, which is how their meanings are known exactly.

@@ -32,7 +32,7 @@
 
 Это `use_hw_seed()` в `tools/adfu_flash.py`, применяется по умолчанию. Вся история — включая
 офлайн-декодер, который «подтвердил» незагружаемый образ, и почему он был неправ — в
-[02-flash-format.md](docs/ru/02-flash-format.md) и `09-journey.md`.
+[02-flash-format.md](docs/ru/02-flash-format.md) и [09-journey.md](docs/ru/09-journey.md).
 
 ## Что здесь есть
 
@@ -55,7 +55,7 @@ sudo .venv/bin/python tools/adfu_flash.py stock         # сухой прого�
 ```
 
 Прошивка и приёмочное чтение, которое показывает, сможет ли загрузочное ПЗУ прочитать флеш, —
-в [06-flashing.md](docs/ru/06-flashing.md). Свои подсказки — в `08-custom-prompts.md`.
+в [06-flashing.md](docs/ru/06-flashing.md). Свои подсказки — в [08-custom-prompts.md](docs/ru/08-custom-prompts.md).
 
 ## Границы применимости
 
