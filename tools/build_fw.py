@@ -6,7 +6,12 @@ Everything runs on the host; nothing is sent to the device. Inputs:
   firmware/prompts-ru-en/tts_rc.lib        the replacement prompts (ru+en)
   vendor/afi/    SDK NorHwsc.bin, NorFwsc.bin, nor_id.bin (XOR 0x38 already removed)
   vendor/2819p/psp_rel/bin/upgrade.bin
-  reference/fwu/US282A_UPGRADE.HEX + .keybuf   (FWU v3 crypto header, reused by tools/fwu_pack.py)
+  vendor/fwu/US282A_UPGRADE.HEX + .keybuf      OPTIONAL: any Actions FWU v3 file, used only for its
+                                               crypto header. Not redistributable and not fetched by
+                                               bootstrap, so UPGRADE.HEX is built only if it is there.
+
+The output that matters is build/fw/afi_plain.bin — that is what tools/adfu_flash.py writes, and it
+needs none of the FWU machinery.
 
 See notes/FWU_FORMAT.md for the reverse-engineered format.
 
@@ -22,6 +27,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import fwu_pack  # noqa: E402
+import paths  # noqa: E402
 from paths import (BUILD_ROOT, REPO_ROOT, VENDOR_ROOT, asset, image_or_shipped, out_dir, vendor)  # noqa: E402
 
 
@@ -31,12 +37,34 @@ AFI_BASE = str(VENDOR_ROOT / "afi")      # scripts/bootstrap.sh decodes the SDK 
 OUT = str(BUILD_ROOT / "fw")
 
 LFI_BASE = 0x4280          # LFI head offset inside the NOR image
+VRAM_BASE = 0xF0000        # settings and pairings live from here on; the image must stay below
 MBREC = (0x0000, 0x0400)
 BREC = (0x0FC0, 0x4280)
 HWSC_ADDR = 0xBFC2C000     # NorHwsc.bin load address: same slot as FWSC, run sequentially (disasm)
 FWSC_ADDR = 0xBFC2C000     # NorFwsc.bin load address (disasm; init entry +0x200)
 CACHE = 0x40
 TTS_NAME = b"TTS_RC  LIB"
+
+
+def vram_margin(lfi_cap):
+    """Bytes left between the end of the firmware image and the VRAM region.
+
+    The image starts at LFI_BASE, so the margin is measured from LFI_BASE + lfi_cap — not from
+    lfi_cap, which overstates the free space by 0x4280 bytes.
+    """
+    return VRAM_BASE - (LFI_BASE + lfi_cap)
+
+
+def lfi_fits(lfi_cap):
+    """Whether an image of this size stays clear of VRAM."""
+    return vram_margin(lfi_cap) >= 0
+
+
+def fwu_reference():
+    """(UPGRADE.HEX, keybuf) to borrow an FWU v3 crypto header from, or None if not available."""
+    head = paths.VENDOR_ROOT / "fwu" / "US282A_UPGRADE.HEX"
+    key = paths.VENDOR_ROOT / "fwu" / "US282A_UPGRADE.keybuf"
+    return (head, key) if head.is_file() and key.is_file() else None
 
 
 def ck2(b):
@@ -163,8 +191,11 @@ def main():
     bonding = brec_dev[192:196]
 
     lfi, lfi_cap = rebuild_lfi(nor, new_tts)
-    print(f"LFI: {len(lfi)} bytes, lfi_cap 0x{lfi_cap:x} (VRAM at 0xF0000, margin 0x{0xF0000 - lfi_cap:x})")
-    assert lfi_cap <= 0xF0000, "LFI overflows into VRAM"
+    print(f"LFI: {len(lfi)} bytes, lfi_cap 0x{lfi_cap:x}, ends at NOR 0x{LFI_BASE + lfi_cap:x} "
+          f"(VRAM at 0xF0000, margin 0x{vram_margin(lfi_cap):x})")
+    assert lfi_fits(lfi_cap), (
+        f"LFI overflows into VRAM: it would end at 0x{LFI_BASE + lfi_cap:x}, past 0xF0000. "
+        "Shorten the prompts or drop some — see docs/en/08-custom-prompts.md.")
 
     brec = rebuild_brec(nor, lfi_cap)
     mbrec = nor[MBREC[0]:MBREC[1]]
@@ -187,8 +218,16 @@ def main():
     open(os.path.join(OUT, "afi_plain.bin"), "wb").write(afi)
     print(f"AFI: {len(afi)} bytes, {len(items)} entries")
 
-    ref = open(vendor("fwu", "US282A_UPGRADE.HEX"), "rb").read()
-    keybuf = open(vendor("fwu", "US282A_UPGRADE.keybuf"), "rb").read()
+    reference = fwu_reference()
+    if reference is None:
+        print("UPGRADE.HEX: skipped — it needs an Actions FWU v3 file for its crypto header, which\n"
+              "             is not redistributable and not fetched by scripts/bootstrap.sh. Put one\n"
+              "             at vendor/fwu/US282A_UPGRADE.HEX plus its .keybuf to build it.\n"
+              "             Nothing else is missing: build/fw/afi_plain.bin above is the image that\n"
+              "             tools/adfu_flash.py writes, and it is the verified path.")
+        return
+    ref = open(reference[0], "rb").read()
+    keybuf = open(reference[1], "rb").read()
     fwu = fwu_pack.pack(ref, keybuf, afi, tail=True)
     out = open(vendor("2819p", "psp_rel", "bin", "upgrade.bin"), "rb").read() + fwu
     path = os.path.join(OUT, "UPGRADE.HEX")

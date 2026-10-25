@@ -1,11 +1,13 @@
 # Where these images come from
 
-The device: a bone-conduction headset sold as **AGPTEK S22**. It advertises Bluetooth as `B18`,
-enumerates as USB `10d6:1101`, and exposes an 8 GB FAT32 disk named `AGP-S22`. The SoC is an
-Actions **ATS2819 / US281B**; the flash is a GD25Q16 (2 MB, JEDEC id `c84015`).
+The device: a bone-conduction headset with no brand marking I could identify. It advertises
+Bluetooth as `B18`, enumerates as USB `10d6:1101`, and exposes an 8 GB FAT32 disk labelled
+`AGP-S22`. The SoC is an Actions **ATS2819 / US281B**; the flash is a GD25Q16 (2 MB, JEDEC id
+`c84015`). I do not know the retail name of the product, so I cannot name its vendor with
+confidence either.
 
-No firmware for this product is published anywhere by its vendor. These files were read off one
-physical unit over ADFU with the tools in `tools/`, in October 2026.
+No firmware for it is published anywhere I could find. These files were read off one physical unit
+over ADFU with the tools in `tools/`, in October 2026.
 
 ## The files
 
@@ -29,8 +31,9 @@ firmware area. The logical image contains no pairing data at all.
 
 ## Copyright
 
-The firmware code in these images belongs to **Actions Semiconductor** and **AGPTEK**. No licence is
-granted for it here, and the MIT licence of this repository does not cover it. It is published for
+The firmware code in these images belongs to **Actions Semiconductor** and to whoever sells this
+headset. No licence is granted for it here, and the MIT licence of this repository does not cover
+it. It is published for
 one practical reason: without it, a device bricked by the vendor's own loaders cannot be restored,
 and nothing equivalent exists in public. If you hold rights to this code and want it taken down,
 open an issue and it will be removed.

@@ -5,8 +5,9 @@ title: "[device] "
 labels: different-hardware
 ---
 
-Everything in this repository was verified on **one** unit: an AGPTEK S22 bone-conduction headset,
-Actions ATS2819 / US281B, GD25Q16 flash. On any other chip the loader addresses, the patch sites and
+Everything in this repository was verified on **one** unit: an unbranded bone-conduction headset
+that reports itself as `B18` over Bluetooth and `AGP-S22` as a USB disk, Actions ATS2819 / US281B,
+GD25Q16 flash. On any other chip the loader addresses, the patch sites and
 the flash geometry are very likely different, and writing with them can brick a device.
 
 Please fill in what you can before asking whether something applies to yours.

@@ -24,12 +24,22 @@ def test_tts_rc_lib_header_and_both_language_slots():
 
 
 def test_sha256sums_match():
-    lines = (ROOT / "firmware/SHA256SUMS").read_text().splitlines()
+    lines = [l for l in (ROOT / "firmware/SHA256SUMS").read_text().splitlines()
+             if l.strip() and not l.startswith("#")]
     assert lines, "manifest is empty"
     for line in lines:
         digest, name = line.split(maxsplit=1)
         blob = (ROOT / name.strip()).read_bytes()
         assert hashlib.sha256(blob).hexdigest() == digest, name
+
+
+def test_every_published_binary_is_in_the_manifest():
+    listed = {l.split(maxsplit=1)[1].strip()
+              for l in (ROOT / "firmware/SHA256SUMS").read_text().splitlines()
+              if l.strip() and not l.startswith("#")}
+    on_disk = {str(p.relative_to(ROOT)) for p in (ROOT / "firmware").rglob("*")
+               if p.is_file() and p.suffix != ".md" and p.name != "SHA256SUMS"}
+    assert on_disk == listed
 
 
 def test_firmware_tree_has_no_personal_strings():

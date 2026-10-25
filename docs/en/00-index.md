@@ -1,7 +1,8 @@
 # Documentation
 
-Reverse-engineering notes for the Actions ATS2819 / US281B platform, worked out on an AGPTEK S22
-bone-conduction headset. [Русская версия](../ru/00-index.md).
+Reverse-engineering notes for the Actions ATS2819 / US281B platform, worked out on an unbranded
+bone-conduction headset that calls itself `B18` over Bluetooth and `AGP-S22` as a USB disk.
+[Русская версия](../ru/00-index.md).
 
 | Document | What it covers |
 |---|---|

@@ -1,0 +1,9 @@
+# sha256 of everything scripts/bootstrap.sh brings in, relative to vendor/.
+# These are the exact revisions every address, offset and patch site in this repository was
+# reverse-engineered against. A mismatch means the upstream SDK changed: read docs/en/07-recovery.md
+# before you let any tool write to a device.
+bda702141d929d22a1e2a3f410976e029f612be1723e4825305f78599e8fdd3e  afi/ADFUS.BIN
+3f19af521e787dec798715ade45eb7dea7ae318f29776b9242acb47f9a669e0b  afi/NorFwsc.bin
+d0cee52906a7eacd6144be2a01e1c0517c6dcec39f79aa2f7ccc96cd0447763b  afi/NorHwsc.bin
+622e173bb01a3bb657090a606f734e30588b3c135da037153370149d1e9be21e  2819p/case/fwpkg/drv/nor_id.bin
+b99ff21e750fb8a7c873e1922a322641542bfda2db8008cb2b7ed91a330552b3  2819p/psp_rel/bin/upgrade.bin

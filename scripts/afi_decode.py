@@ -53,8 +53,15 @@ def extract(afi_path: Path, out_dir: Path) -> list:
 
 
 def verify_checksums(manifest: Path, root: Path) -> list:
-    """Names from the manifest whose file is missing or has the wrong sha256."""
+    """Names from the manifest whose file is missing or has the wrong sha256.
+
+    A missing manifest is itself reported, not raised: bootstrap.sh calls this as its last step
+    and a traceback there tells the reader nothing about what to do.
+    """
     problems = []
+    if not Path(manifest).is_file():
+        return [f"{manifest}: the checksum manifest is missing — it ships with this repository as "
+                "vendor/CHECKSUMS; re-clone or restore it before trusting the fetched loaders"]
     for line in Path(manifest).read_text().splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue

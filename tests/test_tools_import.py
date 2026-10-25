@@ -39,3 +39,26 @@ def test_open_adfu_without_device_gives_actionable_message(monkeypatch):
         adfu_core.open_adfu()
     message = str(e.value)
     assert "ADFU" in message and "sudo" in message
+
+
+def test_a_missing_usb_backend_names_libusb(monkeypatch):
+    """Without libusb, pyusb raises NoBackendError; a reader must be told what to install."""
+    import adfu_core
+
+    class FakeUsb:
+        class core:
+            class NoBackendError(Exception):
+                pass
+
+            @staticmethod
+            def find(**kwargs):
+                raise FakeUsb.core.NoBackendError("no backend available")
+
+    class FakeProtocol:
+        VID, PID_ROM = 0x10D6, 0x10D6
+
+    monkeypatch.setattr(adfu_core, "_usb", lambda: FakeUsb)
+    monkeypatch.setattr(adfu_core, "P", FakeProtocol)
+    with pytest.raises(RuntimeError) as e:
+        adfu_core.open_adfu()
+    assert "libusb" in str(e.value)

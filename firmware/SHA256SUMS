@@ -1,3 +1,5 @@
+# sha256 of every published image and clip, relative to the repository root.
+# Prose (PROVENANCE.md) is deliberately not listed: it is reviewed, not checksummed.
 00e1bc71fe175adc5f4a539e474c3ac52a7f8e8fc6c388030d4d10302b42a402  firmware/prompts-ru-en/afi_plain.bin
 49de8d946a74afdc901d756aed5c706e92a520091efb21664e8daa70f9788d1f  firmware/prompts-ru-en/clips/00_en.mp3
 f49197dbfa1b8e0f5a643cc0ef1afe7ada67cfaf383817d82bae307b3dd0b8d1  firmware/prompts-ru-en/clips/00_ru.mp3
@@ -65,5 +67,4 @@ f1f118ed6e7f5074b52791ca87937f74cf546d0ab5b210ebe18ac4e526255fe2  firmware/promp
 6304a93ab96c2dd6682a8756f0e0c5b08362ae5c1214cd9e2a262413f523536a  firmware/raw/raw_first_1MB.bin
 50b4100c79118a06654e4c4fa32f3c240c7e7a310d7c98ec82e6fa6f9ab3453c  firmware/stock/config_device.bin
 ba4ab77d77a96f20e8f40f00af875aaba1a0b33d92d19a36e7f3df04190416e5  firmware/stock/nor_logical_1MB.bin
-9bb820b124faf68a55d506fba85c19fd9ce61cb88291ab30ef7f85bcf5f0c049  firmware/stock/PROVENANCE.md
 60701f68e302ffcb1b264a09eabb7177910f9da330eae86dedea839936a3e19f  firmware/stock/tts_rc_device.lib

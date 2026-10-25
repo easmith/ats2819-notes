@@ -24,3 +24,25 @@ def test_repo_is_small_enough_for_plain_git():
 
 def test_whole_tree_is_free_of_personal_strings():
     assert scan([ROOT / p for p in git_ls_files()]) == []
+
+
+def test_bootstrap_manifest_is_published():
+    """The pinned loader checksums are the whole point of bootstrap's last step."""
+    assert "vendor/CHECKSUMS" in git_ls_files()
+
+
+def test_no_tool_references_the_private_working_tree():
+    """The port repointed string paths; paths built from components were missed once already.
+
+    Private inputs (the old build/eats2819 tree, reference/) must be gone entirely. "dumps" may
+    only appear as generated output, i.e. on a line that routes it through build/.
+    """
+    offenders = []
+    for tool in sorted((ROOT / "tools").glob("*.py")):
+        for number, line in enumerate(tool.read_text().splitlines(), 1):
+            for needle in ("eats2819", "afi_base", "reference/"):
+                if needle in line:
+                    offenders.append(f"{tool.name}:{number} {needle}")
+            if '"dumps"' in line and "out_dir(" not in line and "BUILD_ROOT" not in line:
+                offenders.append(f'{tool.name}:{number} "dumps" outside build/')
+    assert offenders == []

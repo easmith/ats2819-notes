@@ -78,7 +78,14 @@ def wait_for_rom(timeout=15):
 
 def find_storage():
     usb = _usb()
-    for d in usb.core.find(find_all=True, idVendor=P.VID):
+    try:
+        devices = list(usb.core.find(find_all=True, idVendor=P.VID))
+    except usb.core.NoBackendError as exc:
+        raise RuntimeError(
+            "pyusb found no USB backend: libusb is not installed. On macOS: brew install libusb; "
+            "on Debian/Ubuntu: apt install libusb-1.0-0."
+        ) from exc
+    for d in devices:
         if d.idProduct != P.PID_ROM:
             return d
     return None
@@ -113,7 +120,13 @@ def switch_to_download():
 def open_adfu():
     """The device in ADFU download mode, switching it there from storage mode if needed."""
     usb = _usb()
-    d = usb.core.find(idVendor=P.VID, idProduct=P.PID_ROM)
+    try:
+        d = usb.core.find(idVendor=P.VID, idProduct=P.PID_ROM)
+    except usb.core.NoBackendError as exc:
+        raise RuntimeError(
+            "pyusb found no USB backend: libusb is not installed. On macOS: brew install libusb; "
+            "on Debian/Ubuntu: apt install libusb-1.0-0."
+        ) from exc
     if d is None:
         d = switch_to_download()
     if d is None:

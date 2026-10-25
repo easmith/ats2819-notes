@@ -47,7 +47,18 @@ def test_disassembly_in_notes_is_not_mistaken_for_a_link():
 
 def test_readme_states_scope_and_license():
     t = (ROOT / "README.md").read_text()
-    assert "ATS2819" in t and "AGPTEK S22" in t and "CC BY 4.0" in t and "macOS" in t
+    assert "ATS2819" in t and "CC BY 4.0" in t and "macOS" in t
+
+
+def test_no_document_claims_a_retail_name_for_the_device():
+    """The product name is not known: `B18` and `AGP-S22` are what the device calls itself."""
+    claimed = [str(p.relative_to(ROOT)) for p in markdown_files() if "AGPTEK" in p.read_text()]
+    assert claimed == [], claimed
+
+
+def test_readme_identifies_the_device_by_what_it_reports():
+    t = (ROOT / "README.md").read_text()
+    assert "B18" in t and "AGP-S22" in t and "libusb" in t
 
 
 def test_each_readme_links_its_own_safety_page():

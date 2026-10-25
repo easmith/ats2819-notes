@@ -1,9 +1,10 @@
 # ATS2819 notes: reflashing an Actions bone-conduction headset
 
 Reverse-engineering notes, working tools and firmware images for the Actions **ATS2819 / US281B**
-platform, worked out on a bone-conduction headset sold as **AGPTEK S22** (Bluetooth name `B18`,
-USB disk `AGP-S22`). It started as "these headphones only speak Chinese" and ended with Russian
-voice prompts on the device — by way of bricking it once and getting it back.
+platform, worked out on a bone-conduction headset that carries no brand I could identify: it
+advertises Bluetooth as `B18` and presents a USB disk labelled `AGP-S22`, and that is all it says
+about itself. It started as "these headphones only speak Chinese" and ended with Russian voice
+prompts on the device — by way of bricking it once and getting it back.
 
 [Русская версия](README.ru.md) · [Documentation index](docs/en/00-index.md) · **[Read SAFETY.md before writing anything to a device](SAFETY.md)**
 
@@ -38,7 +39,7 @@ offline decoder that "verified" the unbootable image and why it was wrong, is in
 |---|---|
 | `docs/en/`, `docs/ru/` | the documentation, in English and Russian — same files in both |
 | `tools/` | the working scripts: ADFU access, a MIPS stub, flashing with read-back verification, image building, prompt building |
-| `firmware/stock/` | the factory firmware image of one S22, decoded and checksum-verified — the recovery image |
+| `firmware/stock/` | the factory firmware image of that unit, decoded and checksum-verified — the recovery image |
 | `firmware/prompts-ru-en/` | Russian + English voice prompts, and an image ready to flash |
 | `firmware/raw/` | a raw physical read of a working device: the reference for the on-chip format |
 | `notes/` | the working reverse-engineering notes, with addresses and disassembly |
@@ -61,9 +62,10 @@ ROM reads it, are in [06-flashing.md](docs/en/06-flashing.md). Making your own p
 * Verified on **one** unit of one product. Every address, offset and patch site here belongs to that
   SDK revision; `scripts/bootstrap.sh` checks the loaders' checksums and the tools warn loudly if
   they do not match, but a different chip in the same family will need its own work.
-* Developed on **macOS** (Apple silicon). USB access needs `sudo`. Linux should work and was not
-  tried. External tools used: `ffmpeg`, `lame`, and `binutils` for `gobjdump` (MIPS16 disassembly —
-  Capstone cannot do MIPS16).
+* Developed on **macOS** (Apple silicon). USB access needs `sudo` and **libusb**
+  (`brew install libusb`); without it pyusb has no backend and the tools say so. External tools
+  used: `ffmpeg`, `lame`, and `binutils` for `gobjdump` (MIPS16 disassembly — Capstone cannot do
+  MIPS16). Linux should work and was not tried.
 * The voice prompts were synthesized locally with the macOS `say` command, so the published audio is
   as good as that voice and no better. Rebuilding it is one command and byte-reproducible.
 
@@ -74,8 +76,9 @@ ROM reads it, are in [06-flashing.md](docs/en/06-flashing.md). Making your own p
   entries and nothing was found that selects the second language. Switching may need firmware code.
 * **Pairings are lost on reflash.** They live in the last 64 KB of the chip, outside the firmware
   area, and are not preserved by anything here.
-* **No S22 firmware exists in public** other than the image in this repository. If you brick a unit
-  and this image does not suit it, there is nothing else to fall back on.
+* **No firmware for this product exists in public** other than the image in this repository — not
+  surprising, since the product itself has no name I could find. If you brick a unit and this image
+  does not suit it, there is nothing else to fall back on.
 * The disk-upgrade path (`UPGRADE.HEX` on the device's own disk) is built and host-verified but
   **never flashed**, and it is not the safe option — see [04-fwu-format.md](docs/en/04-fwu-format.md).
 

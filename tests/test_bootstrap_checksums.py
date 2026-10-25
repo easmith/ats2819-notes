@@ -27,3 +27,8 @@ def test_verify_checksums_reports_a_missing_file(tmp_path):
     manifest = write_manifest(tmp_path, [("00" * 32, "gone.bin")])
     problems = verify_checksums(manifest, tmp_path)
     assert len(problems) == 1 and "gone.bin" in problems[0]
+
+
+def test_missing_manifest_is_reported_not_raised(tmp_path):
+    problems = verify_checksums(tmp_path / "CHECKSUMS", tmp_path)
+    assert len(problems) == 1 and "CHECKSUMS" in problems[0]

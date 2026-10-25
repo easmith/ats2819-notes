@@ -88,7 +88,7 @@ This is the FWSC the production/upgrade flow (fwsp.py) uses. It is **not** the F
 ## Device read 2026-10-25 (dumps/extract/, read-only via ROM 0x93)
 
 - XIP 0x10000000, 1 MB: byte-identical to dumps/flash_full.bin.
-- 0xbfc00000–0xbfc08000 is the boot ROM ("UCOS @Actions", ADFU). RAM holds data at 0xbfc1c000–0xbfc48000 and is zero above that. The RAM is the running firmware's memory at the moment ADFU was entered: FAT dir cache of the user disk, BT address stored reversed (c5 5f 46 fd 4e f4), "AGP-S22 2.00". There is **no** LFI dir and no LFI head in RAM.
+- 0xbfc00000–0xbfc08000 is the boot ROM ("UCOS @Actions", ADFU). RAM holds data at 0xbfc1c000–0xbfc48000 and is zero above that. The RAM is the running firmware's memory at the moment ADFU was entered: FAT dir cache of the user disk, BT address stored reversed (redacted: it is this unit's own MAC), "AGP-S22 2.00". There is **no** LFI dir and no LFI head in RAM.
 - Registers:
   - SPI0: CTL=0x38, STATUS=0x96, BC=1, +0x18=0x40, +0x20=0x80.
   - MMU entries 0 and 1: mapping 0/0 and phy 0/0x80.

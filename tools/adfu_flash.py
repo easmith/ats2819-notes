@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Flash the B18 headset NOR over ADFU, replaying the vendor production flow (fwsp.py DoADFU).
 
-Flow (build/eats2819/afi_py/Production.py + fwsp.py, loaders RE'd in notes/RE_NOTES.md):
+Flow (the SDK's own Production.py + fwsp.py, decoded by scripts/afi_decode.py; loaders RE'd in notes/RE_NOTES.md):
   1. boot ROM: upload the vendor ADFUS.BIN to 0xbfc28000 and SWITCH (0x20) to it
   2. ADFUS 0x13/0x21/0xA3: upload NorHwsc.bin to 0xbfc2c000, CALL, GET_STATUS -> flash id
   3. ADFUS: upload NorFwsc.bin (header patched like FWSC_Data) to 0xbfc2c000,

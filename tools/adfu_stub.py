@@ -17,7 +17,7 @@ Flow (no flash access; the stub only reads registers and writes RAM):
   map0: the stub only sets free MMU entry 9 (mapping 0x42000000 = valid | virtual 0x02000000,
         phy 0 = NOR offset 0), exactly what the ROM does for boot (0xbfc014b5). The host then
         reads virtual 0x02000000 with 0x93. Entry 1 maps 0x10000000 -> NOR 0x5980, so
-        bytes 0x5980.. of the result must equal the start of dumps/flash_full.bin.
+        bytes 0x5980.. of the result equal the start of a previous full read, if you have one.
 
   rawread <phy> <len>: NorFwsc init + its raw SPI read (ops[0] 0xbfc2d065) of physical NOR bytes,
         CRC words included; never calls the +0x400 driver. Saves raw_0x<phy>_<len>.bin.
@@ -136,7 +136,7 @@ def _call_and_copy(entry, len_slot, dst_slot):
 
 def _restore_regs():
     """Write back the SPI0/MMU registers HWSC/FWSC change, so XIP works and the ROM loop survives.
-    Values are the live ones captured by `regs` (dumps/extract2/registers_lw.txt)."""
+    Values are the live ones captured by `regs` (build/dumps/extract2/registers_lw.txt)."""
     import re
     txt = open(os.path.join(OUT, "registers_lw.txt")).read()
     vals = {int(a, 16): int(v, 16) for a, v in re.findall(r"(0x[0-9a-f]+) = (0x[0-9a-f]+)", txt)}
@@ -211,8 +211,8 @@ def do_map0():
     path = os.path.join(OUT, "nor_0x000000.bin")
     open(path, "wb").write(data)
     print(f"saved {len(data)} bytes to {os.path.abspath(path)}")
-    old = os.path.join(os.path.dirname(__file__), "..", "dumps", "flash_full.bin")
-    if len(data) > 0x5980:
+    old = os.path.join(str(BUILD_ROOT / "dumps"), "flash_full.bin")
+    if len(data) > 0x5980 and os.path.exists(old):
         ref = open(old, "rb").read()[:len(data) - 0x5980]
         print("bytes 0x5980.. equal flash_full.bin start:", data[0x5980:] == ref)
     print("head:", data[:32].hex(" "))
@@ -257,15 +257,12 @@ def _run_pass(loader, entry, label, stub=None, extra=None):
 
 
 def _loaders():
-    root = os.path.join(os.path.dirname(__file__), "..")
-    base = os.path.join(root, "build", "eats2819", "afi_base")
-    nor = open(os.path.join(root, "dumps", "nor_logical_1MB.bin"), "rb").read()
+    nor = open(asset("firmware", "stock", "nor_logical_1MB.bin"), "rb").read()
     brec = nor[0xFC0:0x4280]
     chipinfo, bonding, boot_config = brec[64:128], brec[192:196], brec[128:192]
-    sys.path.insert(0, os.path.join(root, "tools"))
     import build_fw
-    hwsc = open(os.path.join(base, "NorHwsc.bin"), "rb").read()
-    fwsc = bytearray(build_fw.patch_fwsc(open(os.path.join(base, "NorFwsc.bin"), "rb").read(), 0, boot_config))
+    hwsc = open(vendor("afi", "NorHwsc.bin"), "rb").read()
+    fwsc = bytearray(build_fw.patch_fwsc(open(vendor("afi", "NorFwsc.bin"), "rb").read(), 0, boot_config))
     fwsc[29:33] = bonding
     fwsc[112:112 + 64] = chipinfo          # upgrade.bin fills this from the nor_id match at runtime
     return hwsc, bytes(fwsc)

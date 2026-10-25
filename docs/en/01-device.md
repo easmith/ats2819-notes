@@ -1,8 +1,10 @@
 # The device
 
 A bone-conduction headset. It carries the name **B18** on the shell and over Bluetooth, and appears
-over USB as a flash disk named **AGP-S22**; the product is sold as an AGPTEK S22.
-[Русская версия](../ru/01-device.md).
+over USB as a flash disk named **AGP-S22**. What the product is actually called at retail is
+unknown — there is no brand on the device, no serial string in the USB descriptor, and the only
+names it offers are those two. `AGP-S22` looks like a vendor's model code, but nothing on the
+hardware confirms whose. [Русская версия](../ru/01-device.md).
 
 ## Identifiers
 
