@@ -46,3 +46,9 @@ def test_no_tool_references_the_private_working_tree():
             if '"dumps"' in line and "out_dir(" not in line and "BUILD_ROOT" not in line:
                 offenders.append(f'{tool.name}:{number} "dumps" outside build/')
     assert offenders == []
+
+
+def test_no_editor_or_tooling_artifacts_are_tracked():
+    """.idea/ was committed before .gitignore covered it and reached the published repository."""
+    junk = (".idea/", ".vscode/", ".pytest_cache/", ".DS_Store", "__pycache__/", ".venv/")
+    assert [p for p in git_ls_files() if p.startswith(junk) or p.endswith(".DS_Store")] == []
