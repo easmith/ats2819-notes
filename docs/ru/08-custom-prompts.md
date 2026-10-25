@@ -72,7 +72,7 @@ MP3 16 кГц, 16 кбит/с, моно, постоянный битрейт —
 
 ```bash
 python3 tools/build_fw.py                     # build/fw/afi_plain.bin и build/fw/UPGRADE.HEX
-echo WRITE | sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
+sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
 ```
 
 `build_fw.py` берёт заводской образ, подменяет `TTS_RC.LIB` новой таблицей, сдвигает файлы после

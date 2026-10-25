@@ -17,15 +17,19 @@ sudo .venv/bin/python tools/adfu_flash.py stock
 #    ожидаем: flash id c84015, FWSC init status 0
 
 # 2. запись с проверкой в той же USB-сессии
-echo WRITE | sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
+sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
 #    ожидаем: BREC ok, LFI ok, MBREC ok, ~8 с, затем 20480/20480 IDENTICAL
 
 # 3. отключить кабель, подключить, включить наушники
 ```
 
+Инструмент спросит `Type WRITE to continue:` и без ровно этого слова ничего не сделает.
+Передать слово конвейером (`echo WRITE | …`) можно, и так сделал бы автоматический прогон, — но
+тогда между скопированной строкой и перепрошитым флешем не остаётся ничего. Набирайте руками.
+
 `stock` пишет заводской образ из `firmware/stock/nor_logical_1MB.bin`; `ours` пишет
 `firmware/prompts-ru-en/afi_plain.bin` или свежесобранный `build/fw/afi_plain.bin`, если он есть.
-Подтверждение на вводе сделано намеренно: для записи нужно слово `WRITE`.
+Подтверждение сделано намеренно: для записи нужно слово `WRITE`.
 
 Одна строка в выводе говорит, что правка зерна встала. Если её нет — остановиться:
 
@@ -46,7 +50,7 @@ sudo .venv/bin/python tools/adfu_flash.py stock --xip2 0 0x5000
 Критерий — одна строка:
 
 ```
-matches factory image: 20480/20480  -- IDENTICAL
+matches expected image: 20480/20480  -- IDENTICAL
 ```
 
 Если совпало — загрузочное ПЗУ прочитает те же байты, потому что это тот же путь. Если не совпало,
@@ -72,7 +76,7 @@ matches factory image: 20480/20480  -- IDENTICAL
 Запись, после которой наушники заговорили по-русски:
 
 ```
-echo WRITE | .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
+.venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
   ADFUS ok, flash c84015, FWSC init status 0
   write 8.4 s
   20480/20480 IDENTICAL    VERDICT PASS
@@ -80,7 +84,9 @@ echo WRITE | .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
 
 Затем переподключение, включение — и устройство говорит по-русски. У записанного образа LFI
 размером `0xE9900` байт, кончается на логическом `0xEDB80` (предел `0xF0000`, то есть запас около
-9 КБ), и он на 47 424 байта больше заводского — всё это `TTS_RC.LIB`.
+9 КБ). Образ вырос на 47 424 байта относительно заводского: сама таблица подсказок больше на
+47 408 байт, а остальные 16 — выравнивание по кэш-линии и сдвинутый каталог, которые этот рост
+тянет за собой.
 
 ## Альтернатива: обновление с диска
 

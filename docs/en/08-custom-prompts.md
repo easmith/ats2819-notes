@@ -74,7 +74,7 @@ longer phrasing, drop prompts you do not care about: the digits alone are ten of
 
 ```bash
 python3 tools/build_fw.py                     # build/fw/afi_plain.bin and build/fw/UPGRADE.HEX
-echo WRITE | sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
+sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
 ```
 
 `build_fw.py` takes the stock image, swaps `TTS_RC.LIB` for the new library, shifts the files after

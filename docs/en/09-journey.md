@@ -100,7 +100,7 @@ failure to clear bit 2 of `0xC0140000`, which FWSC's init sets to bypass decodin
 With CRC checking on, the read failed. With software seed 0 it returned:
 
 ```
-matches factory image: 20480/20480  -- IDENTICAL, no CRC errors
+matches expected image: 20480/20480  -- IDENTICAL, no CRC errors
 ```
 
 So **the data in flash was intact** — scrambled with seed 0 while the ROM reads with the chip's

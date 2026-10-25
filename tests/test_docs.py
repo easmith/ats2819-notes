@@ -64,3 +64,52 @@ def test_readme_identifies_the_device_by_what_it_reports():
 def test_each_readme_links_its_own_safety_page():
     assert "SAFETY.md" in (ROOT / "README.md").read_text()
     assert "SAFETY.ru.md" in (ROOT / "README.ru.md").read_text()
+
+
+def prose_files():
+    """Documents a reader follows, excluding notes/ which is verbatim history."""
+    return [p for p in markdown_files() if "notes" not in p.parts]
+
+
+def test_write_examples_do_not_pipe_the_confirmation():
+    """`echo WRITE |` in a copy-pasteable instruction defeats the only pause before a write.
+
+    09-journey.md is exempt: there the piped form is a record of the command that was actually run,
+    not an instruction to follow.
+    """
+    piping = []
+    for path in prose_files():
+        if path.name == "09-journey.md":
+            continue
+        for line in path.read_text().splitlines():
+            if line.lstrip().startswith("echo WRITE"):      # a command, not a mention of one
+                piping.append(f"{path.relative_to(ROOT)}: {line.strip()}")
+    assert piping == []
+
+
+def test_docs_name_the_mapping_entry_the_stub_actually_uses():
+    """"mapping entry 0" was folklore: every tool here claims MAP_ENTRY, and reads were validated."""
+    import adfu_stub
+    wrong = (f"mapping entry {0 if adfu_stub.MAP_ENTRY else 9}",
+             f"запись отображения {0 if adfu_stub.MAP_ENTRY else 9}")
+    for name in ("docs/en/05-adfu.md", "docs/ru/05-adfu.md",
+                 "docs/en/07-recovery.md", "docs/ru/07-recovery.md"):
+        text = (ROOT / name).read_text()
+        for phrase in wrong:
+            assert phrase not in text, f"{name} prescribes {phrase}, which the tools do not use"
+
+
+def test_safety_points_at_a_backup_that_includes_the_boot_records():
+    for name in ("SAFETY.md", "SAFETY.ru.md"):
+        assert "mapat" in (ROOT / name).read_text(), f"{name} must name the complete-backup command"
+
+
+def test_identification_instructions_name_a_tool_that_can_do_it():
+    for name in ("docs/en/01-device.md", "docs/ru/01-device.md"):
+        assert "lfi_extract.py" in (ROOT / name).read_text()
+
+
+def test_working_notes_are_in_english():
+    for note in (ROOT / "notes").glob("*.md"):
+        cyrillic = sum(1 for ch in note.read_text() if "Ѐ" <= ch <= "ӿ")
+        assert cyrillic == 0, f"{note.name} has {cyrillic} Cyrillic characters"

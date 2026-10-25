@@ -22,7 +22,7 @@ Please fill in what you can before asking whether something applies to yours.
 **What the tools report** (all read-only)
 - `sudo .venv/bin/python tools/adfu_core.py --probe` output:
 - Flash id from a dry run (`tools/adfu_flash.py stock`, which writes nothing):
-- Config ids 17–21 from `tools/cfgdump.py`:
+- Config ids 17–21 from `tools/cfgdump.py` (get `CONFIG.BIN` with `tools/lfi_extract.py`):
 - First 16 bytes of `tts_rc.lib` (`MP3 `, rate, frame size, then `v2  ` on this platform):
 
 **What you are trying to do**

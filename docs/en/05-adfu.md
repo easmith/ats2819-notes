@@ -35,9 +35,12 @@ arbitrary flash through the XIP window.
 
 Two things learned the hard way:
 
-* **Use mapping entry 0.** The ROM has already mapped entry 0 to virtual `0x02000000`. Claiming an
-  apparently free entry such as 9 for the same virtual address gives two mappings for one address
-  and you read something other than what you asked for.
+* **Mind which mapping entry you claim.** The tools here use **entry 9** (`MAP_ENTRY` in
+  `tools/adfu_stub.py`), pointed at virtual `0x02000000`. The ROM maps *its* entry 0 to the same
+  virtual base when it boots, so two entries can end up claiming one address — a read that comes
+  back plausible but wrong is the failure mode. Every read taken this way here was cross-checked
+  against an independent dump (the overlap from logical `0x5980` matched byte for byte), and that
+  check is what makes the result trustworthy, not the choice of entry.
 * **Restore what the loaders changed.** HWSC and FWSC reconfigure SPI0; the stub restores SPI0 and
   the mapping registers from values read earlier and then returns to the ROM, so the XIP window
   keeps working.
@@ -99,8 +102,8 @@ init and GET_STATUS. The vendor pair offers **no** read-only NOR dump command at
 1. **Through the ROM, via the XIP window.** `tools/adfu_core.py` reads `0x10000000` with `0x93`.
    Simple and safe, but the window starts at whatever logical offset the mapping holds (`0x5980` on
    the working firmware), so the boot records are not in it.
-2. **Through a stub and mapping entry 0.** `tools/adfu_stub.py mapat <phys> <len>` points the
-   mapping at any offset and reads it. This is how the first megabyte, boot records included, was
+2. **Through a stub and mapping entry 9.** `tools/adfu_stub.py mapat <phys> <len>` points that
+   entry at any offset and reads it. This is how the first megabyte, boot records included, was
    recovered.
 3. **Raw SPI, through the loader's own read op.** `NorFwsc`'s ops table entry 0 at `0xbfc2d065` is
    a plain `read(phys, buf, len)` using SPI command `0x0B`, returning *physical* bytes — lines,

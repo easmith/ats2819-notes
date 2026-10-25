@@ -8,9 +8,17 @@ that cost something.
 
 ## Before the first write
 
-1. **Take a full backup and keep it off the device.** `tools/adfu_core.py` and
-   `tools/adfu_stub.py` read flash without writing a byte. An image you did not take yourself may
-   not match your unit.
+1. **Take a full backup and keep it off the device.** Both readers are write-free, but they do
+   not cover the same ground: `tools/adfu_core.py` reads the mapped window, which starts at logical
+   `0x5980` and therefore **omits MBREC, BREC and the LFI directory** — exactly what recovery needs.
+   For a complete image use the stub, which can point the mapping anywhere:
+
+   ```bash
+   sudo .venv/bin/python tools/adfu_stub.py mapat 0 0x10000     # the boot records
+   sudo .venv/bin/python tools/adfu_core.py --out build/dumps/flash_full.bin --size 0x400000
+   ```
+
+   An image you did not take yourself may not match your unit.
 2. **Charge the headset.** ADFU does not charge. Hours in service mode flattened the battery here
    until the protection cut in and the device stopped responding entirely.
 3. **Read [06-flashing.md](docs/en/06-flashing.md) and [07-recovery.md](docs/en/07-recovery.md).**

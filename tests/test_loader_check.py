@@ -93,3 +93,10 @@ def test_patching_the_known_loader_still_applies_both_edits():
     seed_patched = adfu_flash.use_hw_seed(data)
     o = SEED_SEL_SITE - LOADER_ADDR
     assert struct.unpack_from("<I", seed_patched, o)[0] == 0x34790000
+
+
+def test_an_unidentified_loader_is_checked_for_patch_sites_but_not_identity():
+    """The `ours` path uploads the FWSC from its package, whose hash is not the vendor file's."""
+    data = make_loader()
+    v = check_norfwsc(data, known_sha=None)
+    assert v.seed_site_ok and all(v.brec_sites_ok) and v.problems == []

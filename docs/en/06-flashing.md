@@ -16,15 +16,19 @@ sudo .venv/bin/python tools/adfu_flash.py stock
 #    expect: flash id c84015, FWSC init status 0
 
 # 2. write, and verify inside the same USB session
-echo WRITE | sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
+sudo .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
 #    expect: BREC ok, LFI ok, MBREC ok, ~8 s, then 20480/20480 IDENTICAL
 
 # 3. unplug, replug, power on
 ```
 
+It asks `Type WRITE to continue:` and does nothing unless you type exactly that. Piping the word
+in (`echo WRITE | …`) works and is how an unattended run would do it, but then nothing stands
+between a copy-pasted line and a reprogrammed flash — type it.
+
 `stock` writes the factory image from `firmware/stock/nor_logical_1MB.bin`; `ours` writes
 `firmware/prompts-ru-en/afi_plain.bin`, or a freshly built `build/fw/afi_plain.bin` if you made one.
-The confirmation on stdin is deliberate: a write needs the literal word `WRITE`.
+The confirmation is deliberate: a write needs the literal word `WRITE`.
 
 One line in the output says the seed fix went in. If it is missing, stop:
 
@@ -45,7 +49,7 @@ sudo .venv/bin/python tools/adfu_flash.py stock --xip2 0 0x5000
 The criterion is one line:
 
 ```
-matches factory image: 20480/20480  -- IDENTICAL
+matches expected image: 20480/20480  -- IDENTICAL
 ```
 
 If it matches, the boot ROM will read the same bytes, because it is the same path. If it does not
@@ -72,15 +76,16 @@ not without it was written the old, broken way: that is the signature of the bug
 The flash that put Russian prompts on the device:
 
 ```
-echo WRITE | .venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
+.venv/bin/python tools/adfu_flash.py ours --write --verify 0x5000
   ADFUS ok, flash c84015, FWSC init status 0
   write 8.4 s
   20480/20480 IDENTICAL    VERDICT PASS
 ```
 
 Then replug, power on, and the headset speaks Russian. The image it wrote has an LFI of `0xE9900`
-bytes ending at logical `0xEDB80` — the limit is `0xF0000`, so about 9 KB spare — and is 47 424
-bytes larger than stock, all of it `TTS_RC.LIB`.
+bytes ending at logical `0xEDB80` — the limit is `0xF0000`, so about 9 KB spare. The image grew
+by 47 424 bytes over stock: the prompt library itself is 47 408 bytes bigger, and the remaining 16
+are the cache-line padding and shifted directory that growth drags along.
 
 ## The disk-upgrade alternative
 

@@ -3,36 +3,36 @@
      Paths mentioned here are from the private working tree; the published equivalents are
      firmware/stock/nor_logical_1MB.bin, firmware/raw/raw_first_1MB.bin and vendor/afi/. -->
 
-# Формат UPGRADE.FWU / UPGRADE.HEX (US281B / ATS2819)
+# UPGRADE.FWU / UPGRADE.HEX format (US281B / ATS2819)
 
-Источники: `vendor/2819p/case/fwpkg/build_FWU_HEX.bat`, исходники `case/ap/ap_upgrade/*.c` и `case/ap/ap_config/config_*.c`, `psp_rel/bin/upgrade.bin`, скрипт производителя `afi_py/fwsp.py` (из `psp_rel/bin/AFI.bin`). Все файлы внутри AFI.bin закрыты XOR 0x38, расшифрованные копии лежат в `afi_base/` и `afi_py/`.
+Sources: `vendor/2819p/case/fwpkg/build_FWU_HEX.bat`, the sources `case/ap/ap_upgrade/*.c` and `case/ap/ap_config/config_*.c`, `psp_rel/bin/upgrade.bin`, and the vendor's own build script `fwsp.py` (from `psp_rel/bin/AFI.bin`). Every file inside AFI.bin is obfuscated with XOR 0x38; `scripts/afi_decode.py` writes the decoded copies to `vendor/afi/`.
 
-## Как собирается (build_FWU_HEX.bat)
+## How it is built (build_FWU_HEX.bat)
 
 ```
 FW2X.exe -fssf US281B_BTBOX.fw MakeBin AFI UPGRADE.IMG
 copy upgrade.bin /b + UPGRADE.IMG /b  UPGRADE.FWU
-copy UPGRADE.FWU UPGRADE.HEX            (это тот же файл)
+copy UPGRADE.FWU UPGRADE.HEX            (the same file under two names)
 ```
 
 ```
-UPGRADE.FWU = [ upgrade.bin, 0x8300 байт, открытый MIPS-код ]
-            + [ AFI, зашифрованный FWU v3 (если FWU_ENCRYPT=1) ]
-            + [ FwuTail, 512 байт, не шифруется ]
+UPGRADE.FWU = [ upgrade.bin, 0x8300 bytes, plain MIPS code ]
+            + [ AFI, encrypted as FWU v3 (if FWU_ENCRYPT=1) ]
+            + [ FwuTail, 512 bytes, not encrypted ]
 ```
 
-## Когда запускается
+## When it runs
 
-`config_poweron.c`: при включении, если вставлена карта (`DISK_H`, у наушников это внутренняя память 8 ГБ, судя по всему) и в корне лежит `UPGRADE.HEX` или `UPGRADE.FWU` (имя в Unicode или 8.3). Без кабеля зарядки нужен заряд батареи выше 1 (карта) или выше 3 (uhost).
+`config_poweron.c`: at power-on, if a card is present (`DISK_H` — on this headset that appears to be the internal 8 GB storage) and the root holds `UPGRADE.HEX` or `UPGRADE.FWU` (Unicode or 8.3 name). Without a charging cable it also wants battery level above 1 (card) or above 3 (uhost).
 
-- `UPGRADE.FWU`: заводской режим, после обновления устройство не перезагружается.
-- `UPGRADE.HEX`: пользовательский режим. Файл переименовывается в `UPGRADE~.HEX`, после обновления устройство перезагружается.
+- `UPGRADE.FWU`: factory mode; the device does not reboot after the update.
+- `UPGRADE.HEX`: end-user mode. The file is renamed to `UPGRADE~.HEX` and the device reboots after the update.
 
-## Часть 1: upgrade.bin (проверка на устройстве, `upgrade_app_main.c`)
+## Part 1: upgrade.bin (the on-device check, `upgrade_app_main.c`)
 
 ```c
-struct upgrade_header_t {      // смещение 0 файла
-    u32 checksum;              // сумма u32-слов [4 .. load_size)
+struct upgrade_header_t {      // at offset 0 of the file
+    u32 checksum;              // sum of u32 words over [4 .. load_size)
     u8  format[4];             // "UPG\0"
     u32 load_size;             // 0x8300
     u32 load_addr;             // 0x9fc3a000
@@ -40,68 +40,68 @@ struct upgrade_header_t {      // смещение 0 файла
 };
 ```
 
-`upgrade.ap` проверяет только `"UPG"` и эту сумму (проверено на SDK upgrade.bin: 0xddb10a6e), читает первые `load_size` байт файла в `load_addr` и вызывает `main_func(params)`. Подписи нет.
+`upgrade.ap` checks only `"UPG"` and that sum (verified against the SDK's upgrade.bin: 0xddb10a6e), reads the first `load_size` bytes of the file to `load_addr` and calls `main_func(params)`. There is no signature.
 
-В upgrade.bin есть свой драйвер FAT/exFAT, uhost, функции `upgrade_decrypt_read_block`, `upgrade_image_find_file`, `upgrade_load_and_run_hwsc/fwsc`, `upgrade_fw_write`, имена `NORHWSC BIN`, `NORFWSC BIN`, `NORMBRECBIN`, `NORBREC BIN`, `FWIMAGE FW `, `RESLIB  BIN`. Также в нём есть константы FWU v3: сигнатура `11 22 .. ff 75` по смещению 0x82c0, sig2 `3f ad f8 b0 ..` по 0x82d8, таблица decode_A по 0x7e28 и 0x808.
+upgrade.bin carries its own FAT/exFAT and uhost drivers, the functions `upgrade_decrypt_read_block`, `upgrade_image_find_file`, `upgrade_load_and_run_hwsc/fwsc`, `upgrade_fw_write`, and the names `NORHWSC BIN`, `NORFWSC BIN`, `NORMBRECBIN`, `NORBREC BIN`, `FWIMAGE FW `, `RESLIB  BIN`. It also holds the FWU v3 constants: the signature `11 22 .. ff 75` at 0x82c0, sig2 `3f ad f8 b0 ..` at 0x82d8, and the decode_A table at 0x7e28 and 0x808.
 
-## Часть 2: шифрование FWU v3
+## Part 2: FWU v3 encryption
 
-Схема та же, что разобрана в rockbox `utils/atj2137/atjboottool/fwu.c`. **В upgrade.bin от 2819 таблицы совпадают полностью**: decode_A (1024 байта, смещение 0x7e28), sect233k1 b (0x8228), G_y (0x8248), G_x (0x8268), сигнатура и sig2 (0x82c0, 0x82d8). Значит, он выполняет ту же процедуру ECIES.
+The scheme is the one worked out in rockbox's `utils/atj2137/atjboottool/fwu.c`. **In the 2819's upgrade.bin the tables match exactly**: decode_A (1024 bytes, at 0x7e28), sect233k1 b (0x8228), G_y (0x8248), G_x (0x8268), the signature and sig2 (0x82c0, 0x82d8). So it performs the same ECIES procedure.
 
-**Закрытый ключ ECC хранится в самом файле** (блок B, закрыт ключом из блока A), так что 32-байтный сеансовый ключ задаётся только сектором 0 и блоками A/B. Секрет устройства не нужен.
+**The private ECC key is stored in the file itself** (block B, protected by the key in block A), so the 32-byte session key is determined by sector 0 and blocks A/B alone. No device secret is involved.
 
-Шифр данных: в US282A UPGRADE.HEX стоит вариант «ATJ2127» (atjboottool пишет «looks like an ATJ2127 firmware», 16 раундов на 512-байтный сектор), RC4 не используется. FwuTail у US282A нет, и это **голый** FWU (сигнатура по смещению 0), без upgrade.bin спереди.
+The data cipher: the US282A UPGRADE.HEX uses the "ATJ2127" variant (atjboottool reports "looks like an ATJ2127 firmware", 16 rounds per 512-byte sector); RC4 is not used. The US282A file has no FwuTail and is a **bare** FWU (signature at offset 0) with no upgrade.bin in front.
 
-Эталон: `reference/fwu/US282A_UPGRADE.HEX`, его ключ: `reference/fwu/US282A_UPGRADE.keybuf`, atjboottool с печатью ключа: `vendor/atjboottool` (make). Упаковщик `tools/fwu_pack.py` берёт сектор 0 и блоки A/B из эталонного FWU и шифрует свой AFI. Ключ извлекается копией atjboottool с печатью keybuf (переменная `KEYBUF_OUT`). Проверено:
-- перешифрованный расшифрованный эталон US282A **побайтно совпадает** с оригиналом (все 1 759 232 байта);
-- нагрузка другого размера (0x51234 байт, изменённое содержимое) с `--tail` расшифровывается atjboottool без ошибок: проходят все проверки, контрольные суммы FwuTail и сравнение с исходником.
+The reference file used here was a US282A UPGRADE.HEX plus the key extracted from it (expected at `vendor/fwu/US282A_UPGRADE.HEX` and `.keybuf`; neither is redistributable, which is why `scripts/bootstrap.sh` does not fetch them and `tools/build_fw.py` skips the UPGRADE.HEX step without them). The key is extracted by a copy of rockbox's atjboottool patched to print keybuf (the `KEYBUF_OUT` variable). `tools/fwu_pack.py` takes sector 0 and blocks A/B from that reference FWU and encrypts its own AFI with them. Verified:
+- re-encrypting the decrypted US282A reference reproduces the original **byte for byte** (all 1 759 232 bytes);
+- a payload of a different size (0x51234 bytes, altered content) packed with `--tail` decrypts in atjboottool with no errors: every check passes, including the FwuTail checksums and the comparison against the input.
 
-Не проверено:
-- примет ли upgrade.bin от 2819 сектор 0 и блоки A/B, взятые из файла US282A;
-- шифрует ли FW2X AFI для 2819 вообще (`FWU_ENCRYPT` в fwimage.cfg не задан, значение по умолчанию неизвестно);
-- где upgrade.bin ищет начало FWU. Скорее всего, сразу после себя, по смещению 0x8300.
+Not verified:
+- whether the 2819's upgrade.bin accepts sector 0 and blocks A/B taken from a US282A file;
+- whether FW2X encrypts the AFI for the 2819 at all (`FWU_ENCRYPT` is not set in fwimage.cfg and the default is unknown);
+- where upgrade.bin looks for the start of the FWU. Most likely immediately after itself, at offset 0x8300.
 
-## Часть 3: AFI (fwsp.py BuildAFI)
+## Part 3: AFI (fwsp.py BuildAFI)
 
 ```
-ST_AFI_HEAD (4096 байт):
+ST_AFI_HEAD (4096 bytes):
   "AFI\0", vid u16, pid u16, version[4], date[4] (BCD), length u32,
   sdk_version[4], reserved[8],
   ST_AFI_DIR[126]: name 8.3 [11], type u8, address u32, offset u32, length u32, subtype u32, checksum u32
-  reserved[28], head_checksum u32 (= сумма u32 первых 4092 байт)
+  reserved[28], head_checksum u32 (= sum of u32 over the first 4092 bytes)
 type: 'H'(0x48)=HWSC, 'F'(0x46)=FWSC, 'M'(0x4D)=MBREC, 'B'(0x42)=BREC, 0x60=NAND_ID, 'I'(0x49)=FWIMAGE.FW (LFI), 0x70=RESLIB.BIN
-checksum записи = сумма u32 по данным файла. Длина AFI выравнивается до 512 байт.
-MBREC: первые 2 байта = checksum_2(данные[2:]) + 0x1234.
+An entry's checksum = sum of u32 over the file's data. The AFI length is padded to 512 bytes.
+MBREC: the first 2 bytes = checksum_2(data[2:]) + 0x1234.
 ```
 
 ```
-FwuTail (512 байт, после зашифрованных данных):
-  length=1, type=7, reserved[14], fwu_checksum u32 (сумма u32 по зашифрованному AFI),
-  flag=0x55aa55aa, "FwuTail\0", crc[32]=0, reserved[444], tail_checksum u32 (сумма первых 508 байт)
+FwuTail (512 bytes, after the encrypted data):
+  length=1, type=7, reserved[14], fwu_checksum u32 (sum of u32 over the encrypted AFI),
+  flag=0x55aa55aa, "FwuTail\0", crc[32]=0, reserved[444], tail_checksum u32 (sum of the first 508 bytes)
 ```
 
-## Часть 4: FWIMAGE.FW = LFI (fwsp.py BuildLFI)
+## Part 4: FWIMAGE.FW = LFI (fwsp.py BuildLFI)
 
 ```
 ST_LFI_HEAD (512): lfi_flag u32, sdk_version[4], version[4], vid, pid, dir_checksum u32,
   capinfo[32] (+20), reserved[16], bt_lap[3] (+68), save_bt_flag, reserved[7],
   udisk_setting (+79), usb_setup_info[48] (+80), sdk_description[336], reserved[46],
-  head_checksum u16 (= checksum_2 первых 510 байт)
-ST_LFI_DIR[n] (32 байта): name[11], attr, subtype, reserved, version u16, offset u32, length u32, reserved[4], checksum u32
-  n округляется до границы cache line, последняя запись пустая. dir_checksum = сумма u32 по всем записям.
-Порядок файлов: драйверы (по text_addr, entry-таблицы общих модулей объединены), затем AP (по text_addr), затем остальные файлы.
-В конце добавляется ещё одна cache line.
+  head_checksum u16 (= checksum_2 of the first 510 bytes)
+ST_LFI_DIR[n] (32 bytes): name[11], attr, subtype, reserved, version u16, offset u32, length u32, reserved[4], checksum u32
+  n is rounded up to a cache-line boundary and the last entry stays empty. dir_checksum = sum of u32 over all entries.
+File order: drivers (by text_addr, with the entry tables of shared modules merged), then the APs (by text_addr), then everything else.
+One more cache line is appended at the end.
 ```
 
-LFI пишется в открытом виде. При записи (FWSC, команда WRITE_LFI, режим 0xC0) NOR шифрует сам FWSC. При обновлении заводской инструмент сначала **читает** заголовок LFI (WRITE_LFI, режим `0x80000000`, 0x200 байт) и переносит в новый заголовок `capinfo`, BT LAP (+68..70) и usb/sn (+79..127). Разбор NorFwsc.bin (RE_NOTES.md) показал: режима чтения у него нет, и в ответ на 0x80 приходит лишь старое содержимое RAM-буфера. Кроме того, первый же вызов его драйвера стирает NOR 0–0xFFFF. На устройстве его не использовать.
+The LFI is written in the clear. During a write (FWSC, WRITE_LFI, mode 0xC0) it is the FWSC that applies the NOR encoding. When updating, the vendor tool first **reads** the LFI header (WRITE_LFI, mode `0x80000000`, 0x200 bytes) and carries `capinfo`, the BT LAP (+68..70) and usb/sn (+79..127) over into the new header. Disassembling NorFwsc.bin (see RE_NOTES.md) showed that it has no read mode at all: mode 0x80 returns nothing but the stale contents of the RAM buffer, and the very first call of its driver erases NOR 0–0xFFFF. Do not use it on a device.
 
-## Что это значит для dumps/flash_full.bin
+## What this means for a window-only dump (the old dumps/flash_full.bin)
 
-Заголовки модулей (сигнатура `yqhx` по смещению +4): первый целый заголовок стоит на 0x62c0 (драйвер id 0xff). Заголовка ядра (id 0x00) в дампе нет. Окно `0x10000000` начинается **внутри кода ядра**. Заголовок LFI, каталог LFI, заголовок и начало kernel.drv, MBREC и BREC в дамп не попадают. Все остальные модули видны целиком (43 заголовка: драйверы, AP, *.al), а также tts_rc.lib и config.bin. Ядро на устройстве собрано иначе, чем в SDK: куски kernel.drv из SDK стоят с плавающим сдвигом.
+Module headers (signature `yqhx` at +4): the first complete header sits at 0x62c0 (driver id 0xff). The kernel's own header (id 0x00) is not in the dump. The `0x10000000` window starts **inside the kernel's code**, so the LFI header, the LFI directory, the header and start of kernel.drv, MBREC and BREC are all missing from it. Everything else is there in full (43 headers: drivers, APs, *.al), along with tts_rc.lib and config.bin. The kernel on the device is built differently from the SDK's: chunks of the SDK's kernel.drv appear at a drifting offset.
 
-Обновление с карты в прошивку устройства встроено: `config.ap` (заголовок на 0x9ad80) содержит строки `UPGRADE HEX`/`UPGRADE FWU` (0x9bc0c), а `upgrade.ap` (заголовок на 0x9f740) — `upgrade_file_open`, `UPGRADE~HEX`.
+Card-based upgrading is built into the device's firmware: `config.ap` (header at 0x9ad80) contains the strings `UPGRADE HEX`/`UPGRADE FWU` (at 0x9bc0c), and `upgrade.ap` (header at 0x9f740) contains `upgrade_file_open` and `UPGRADE~HEX`.
 
-Итог: формат известен, шифровать мы умеем. Но чтобы собрать FWIMAGE.FW, недостаёт заголовка LFI, каталога и начала ядра этого устройства. Варианты: свой код через ADFU CALL_ENTRY (чтение NOR, перенастройка окна XIP), или собрать LFI целиком из SDK. Второй вариант рискованнее: прошивка будет не та, что стоит на устройстве. Через NorFwsc прочитать нельзя, см. RE_NOTES.md.
+Conclusion at that point: the format was understood and the encryption reproducible, but building FWIMAGE.FW still lacked this device's LFI header, its directory and the start of its kernel. The options were our own code via ADFU CALL_ENTRY (read NOR, repoint the XIP window) or assembling the LFI entirely from the SDK. The second is riskier: the result would not be the firmware the device actually runs. Reading through NorFwsc is not possible, see RE_NOTES.md.
 
 ## upgrade.bin, what it actually does (disassembly: build/eats2819/dis/upgrade16.txt)
 

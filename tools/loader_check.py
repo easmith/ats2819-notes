@@ -42,12 +42,16 @@ class LoaderVerdict:
 
 
 def check_norfwsc(data: bytes, known_sha: str = KNOWN_NORFWSC_SHA256) -> LoaderVerdict:
-    """Compare a NorFwsc image against the revision these tools were reverse-engineered on."""
+    """Compare a NorFwsc image against the revision these tools were reverse-engineered on.
+
+    known_sha=None means the identity cannot be judged — the loader inside a built package has a
+    filled-in header and therefore a different hash — so only the patch sites are checked.
+    """
     digest = hashlib.sha256(data).hexdigest()
     problems = []
 
-    known = digest == known_sha and len(data) == KNOWN_NORFWSC_SIZE
-    if not known:
+    known = known_sha is not None and digest == known_sha and len(data) == KNOWN_NORFWSC_SIZE
+    if known_sha is not None and not known:
         problems.append(
             f"this is not the NorFwsc these tools know: {len(data)} bytes, sha256 {digest[:16]}…; "
             f"expected {KNOWN_NORFWSC_SIZE} bytes, sha256 {known_sha[:16]}…"

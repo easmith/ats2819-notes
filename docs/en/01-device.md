@@ -23,9 +23,10 @@ files.
 
 Three cheap checks, in order of confidence:
 
-1. **`tts_rc.lib` format.** Pull `config.bin` and `tts_rc.lib` out of a flash dump
-   (`tools/extract_all.py`) and look at the first 16 bytes of the prompt library: `MP3 `, sample
-   rate, frame size, then the literal `v2  `. That is the US281B-era format.
+1. **`tts_rc.lib` format.** Take a flash dump (`tools/adfu_stub.py mapat`, read-only), pull the
+   firmware's own files out of it with `tools/lfi_extract.py IMAGE.bin OUT_DIR`, and look at the
+   first 16 bytes of `TTS_RC.LIB`: `MP3 `, sample rate, frame size, then the literal `v2  `. That
+   is the US281B-era format. The same command gives you the `CONFIG.BIN` the next check needs.
 2. **Config IDs 17–21** (`FACTORY_FW_INFO_*`) read with `tools/cfgdump.py` — these are what
    identified the platform here, by matching the public SDK
    [github.com/Pachouli/2819p](https://github.com/Pachouli/2819p).

@@ -202,7 +202,6 @@ def use_hw_seed(fwsc):
 def load_image(which):
     """Returns (hwsc, fwsc, brec, lfi, mbrec). FWSC header is patched except the NOR record."""
     hwsc = open(vendor("afi", "NorHwsc.bin"), "rb").read()
-    loader_check.warn(loader_check.check_norfwsc(open(vendor("afi", "NorFwsc.bin"), "rb").read()))
     if which == "ours":
         e = afi_entries(open(image_or_shipped("afi_plain.bin"), "rb").read())
         brec, lfi, mbrec, fwsc = e["NORBRECBIN"][1], e["FWIMAGEFW"][1], e["NORMBRECBIN"][1], e["NORFWSCBIN"][1]
@@ -218,6 +217,11 @@ def load_image(which):
                                              lfi_cap, brec[128:192]))
         fwsc[29:33] = brec[192:196]
         fwsc = bytes(fwsc)
+    # Check the loader that is actually going to the device. On the `ours` path it comes from the
+    # package, whose header was filled in by build_fw, so its hash is not the vendor file's and only
+    # the patch sites can be judged.
+    loader_check.warn(loader_check.check_norfwsc(
+        fwsc, known_sha=loader_check.KNOWN_NORFWSC_SHA256 if which == "stock" else None))
     fwsc = fix_brec_offset(fwsc)
     if HW_SEED[0]:
         fwsc = use_hw_seed(fwsc)
@@ -490,10 +494,15 @@ def dump_regs(adfu):
     return out
 
 
-def expected_logical(mbrec, brec, lfi):
-    """The logical image the device should read back after a write: MBREC, gap, BREC, LFI."""
+def expected_logical(mbrec, brec, lfi, with_mbrec=True):
+    """The logical image the device should read back after a write: MBREC, gap, BREC, LFI.
+
+    With --no-mbrec the boot record is not written, so sector 0 stays erased; claiming otherwise
+    would fail the acceptance read on a write that went exactly as asked.
+    """
     img = bytearray(b"\xff" * (build_fw.LFI_BASE + len(lfi)))
-    img[0:len(mbrec)] = mbrec
+    if with_mbrec:
+        img[0:len(mbrec)] = mbrec
     img[build_fw.BREC[0]:build_fw.BREC[0] + len(brec)] = brec
     img[build_fw.LFI_BASE:build_fw.LFI_BASE + len(lfi)] = lfi
     path = os.path.join(out_dir("fw"), "expected_logical.bin")
@@ -691,8 +700,9 @@ def main():
     if a.write and a.verify:
         write_flash(adfu, brec, lfi, mbrec, not a.no_mbrec)
         print("\n--- acceptance read: exactly how the boot ROM reads the flash ---")
-        got = xip_read2(adfu, 0, a.verify, expect=expected_logical(mbrec, brec, lfi))
-        ok = got == expected_logical(mbrec, brec, lfi)[:len(got)]
+        expect = expected_logical(mbrec, brec, lfi, with_mbrec=not a.no_mbrec)
+        got = xip_read2(adfu, 0, a.verify, expect=expect)
+        ok = got == expect[:len(got)]
         print("\nVERDICT: " + ("PASS - the ROM will read this; replug the headphones"
                                 if ok else "FAIL - do NOT trust this flash; investigate"))
         sys.exit(0 if ok else 1)

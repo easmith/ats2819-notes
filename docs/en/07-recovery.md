@@ -46,7 +46,7 @@ sudo .venv/bin/python tools/adfu_flash.py stock
 #    expect: flash id c84015, FWSC init status 0
 
 # 2. write the factory image back
-echo WRITE | sudo .venv/bin/python tools/adfu_flash.py stock --write --verify 0x5000
+sudo .venv/bin/python tools/adfu_flash.py stock --write --verify 0x5000
 #    expect: BREC ok, LFI ok, MBREC ok, ~8 s, 20480/20480 IDENTICAL
 
 # 3. replug the cable; the device should boot
@@ -60,8 +60,9 @@ powered on, enumerated `10d6:1101` and mounted its disk.
 * **Byte-wise register reads lie.** The ROM's `0x93` read copies memory a byte at a time, so a
   32-bit register returns only its low byte. Read registers with a stub, via `lw`
   (`--regs`).
-* **Mapping entry 0 is taken by the ROM.** Reading through an "unused" entry 9 pointed at the same
-  virtual address gives the wrong data.
+* **Two mapping entries can claim one virtual address.** The ROM maps its entry 0 to virtual
+  `0x02000000`; the tools point entry 9 there too. Reads taken this way were right, but only the
+  overlap cross-check proved it — never trust such a read on its own.
 * **The `SPI_REQ` handshake is mandatory.** While the CPU holds the FIFO (`CTL` bit 8), the cache
   cannot read flash and the window returns `FF`. Hand the FIFO back and wait for `STATUS` bit 8 to
   clear.

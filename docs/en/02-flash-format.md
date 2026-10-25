@@ -53,7 +53,7 @@ by the HWSC loader, matching both the device's own BREC and the SDK's `nor_id.bi
 | Physical range | How it is stored | What lives there |
 |---|---|---|
 | `0x000000` … `0x1F0000` | in lines: 64 data bytes + 2 CRC bytes = **66 bytes** | the firmware |
-| `0x1F0000` … `0x200000` | **as-is, 1:1**, no lines, no transform | VRAM: settings, pairings |
+| `0x1F0000` … `0x200000` | **as-is, 1:1**, no lines, no transform | the raw tail: the pairing store lives here |
 
 So the logical capacity of the firmware region is `(0x1F0000 / 66) × 64 = 30782 × 64 = 0x1E0F80`,
 and addresses convert as `physical = (logical / 64) × 66 + (logical mod 64)`.
@@ -66,6 +66,10 @@ Two independent confirmations:
 
 1. **From data.** Pairing records in the tail region appear in a raw read as **plain text**, and the
    difference between physical and logical addresses there is constant at `0xF07C = 0x1E0F80 / 32`.
+   Do not confuse this physical tail with the logical `0xF0000` bound that limits a firmware image:
+   the tail is where the pairing store is *stored*, while `0xF0000` is where the device's own
+   settings region (VRAM, `spi_stg_cap` in BREC) begins in logical space. An image must stay below
+   `0xF0000`; the pairing store sits far beyond it and is untouched by a firmware write.
 2. **From registers.** After FWSC init, `SPI0+0x20` and `0xC0140008` both hold exactly `0x001E0F80`.
 
 ### The two CRC bytes

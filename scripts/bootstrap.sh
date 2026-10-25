@@ -29,11 +29,17 @@ clone_or_update https://github.com/Pachouli/2819p "$VENDOR/2819p"
 clone_or_update https://github.com/sonigeez/actions-adfu "$VENDOR/actions-adfu"
 
 echo "==> applying the endpoint patch to actions-adfu"
-if git -C "$VENDOR/actions-adfu" apply --check "$ROOT/patches/actions-adfu-endpoints.patch" 2>/dev/null; then
-  git -C "$VENDOR/actions-adfu" apply "$ROOT/patches/actions-adfu-endpoints.patch"
+PATCH="$ROOT/patches/actions-adfu-endpoints.patch"
+if git -C "$VENDOR/actions-adfu" apply --check "$PATCH" 2>/dev/null; then
+  git -C "$VENDOR/actions-adfu" apply "$PATCH"
   echo "    applied"
+elif git -C "$VENDOR/actions-adfu" apply --reverse --check "$PATCH" 2>/dev/null; then
+  echo "    already applied"
 else
-  echo "    already applied (or no longer applies to upstream — check it by hand)"
+  echo "    ERROR: the patch neither applies nor is already applied — upstream has moved." >&2
+  echo "    Without it the bulk endpoints are hardcoded and every tool here fails on this device." >&2
+  echo "    Fix patches/actions-adfu-endpoints.patch against the current upstream, then rerun." >&2
+  exit 1
 fi
 
 echo "==> decoding the ADFU loaders out of the SDK package"

@@ -74,8 +74,9 @@ ROM reads it, are in [06-flashing.md](docs/en/06-flashing.md). Making your own p
 * **English prompts are built but unreachable.** They sit in the language-1 slot of `tts_rc.lib`,
   which is the vendor's own second-language mechanism, but the stock firmware shipped zero English
   entries and nothing was found that selects the second language. Switching may need firmware code.
-* **Pairings are lost on reflash.** They live in the last 64 KB of the chip, outside the firmware
-  area, and are not preserved by anything here.
+* **Pairings are lost on reflash.** They live in the chip's raw physical tail, from `0x1F0000`,
+  outside the firmware area and outside the logical `0xF0000` bound an image must respect. Nothing
+  here preserves them.
 * **No firmware for this product exists in public** other than the image in this repository — not
   surprising, since the product itself has no name I could find. If you brick a unit and this image
   does not suit it, there is nothing else to fall back on.
